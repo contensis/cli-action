@@ -4,10 +4,6 @@ This action allows you to interact with Contensis CMS via cli commands in your o
 
 ## Inputs
 
-## `who-to-greet`
-
-**Required** The name of the person to greet. Default `"World"`.
-
 ## `alias`
 
 **Required** 'The Contensis cloud alias to connect to'
