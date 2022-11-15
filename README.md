@@ -1,4 +1,4 @@
-# Contensis cli CMS action
+# Contensis cli action
 
 This action allows you to interact with Contensis CMS via cli commands in your own Github Actions
 
@@ -20,38 +20,25 @@ The id of the project to connect to. Default: `"website"`
 
 **Required** Shared secret to use with the supplied client id
 
-## `block-id`
-
-The id of the block to push to
-
-## `image-uri`
-
-The uri of the container image to build the block from. Default: `"ghcr.io/${{ github.repository }}/${{ github.ref_name }}/app:latest"`
-
-## `auto-release`
-
-Whether to release the block upon successful push. Default: `false`
-
 ## Outputs
 
 No outputs are implemented as yet.
 
 ## Example usage
 
-### Push a block
+### Get entries and output to a file
 
 ```yml
 uses: contensis/cli-action@v1
 with:
-  block-id: name-of-block
-  auto-release: true
+  command: get entries --zenql "sys.contentTypeId = blogPost" --ouput ./data/blogPosts.json
   alias: example-dev
   project-id: contensis
   client-id: ${{ secrets.CONTENSIS_CLIENT_ID }}
   shared-secret: ${{ secrets.CONTENSIS_SHARED_SECRET }}
 ```
 
-### Run other CLI commands
+### Create a content type from a file
 
 ```yml
 uses: contensis/cli-action@v1
