@@ -1,35 +1,64 @@
-name: "Contensis cli action"
-description: "A GitHub Action for interacting with a Contensis CMS via the cli"
-author: "Zengenti"
+name: 'Contensis cli action'
+description: 'A GitHub Action for interacting with a Contensis CMS via the cli'
+author: 'Zengenti'
 branding:
-  icon: "terminal"
-  color: "blue"
+  icon: 'terminal'
+  color: 'blue'
 inputs:
   alias:
-    description: "The Contensis cloud alias to connect to"
+    description: 'The Contensis cloud alias to connect to'
     required: true
   project-id:
-    description: "The id of the project to connect to"
+    description: 'The id of the project to connect to'
     required: false
     default: website
   client-id:
-    description: "Client id to connect to the supplied alias"
+    description: 'Client id to connect to the supplied alias'
     required: true
   shared-secret:
-    description: "Shared secret to use with the supplied client id"
+    description: 'Shared secret to use with the supplied client id'
     required: true
   command:
-    description: "Optional: which cli command to run"
+    description: 'Optional: which cli command to run'
     required: false
+  cli-version:
+    description: 'Optional: pull cli from specified tag. Default: release'
+    default: release
+  cli-splash:
+    description: 'Optional: show welcome splash screen. Default: true'
+    default: true
+
+outputs:
+  command-output:
+    description: 'The cli command output'
+    value: ${{ steps.set.outputs.command-output }}
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
+    - name: Touch output file
+      id: pwd
+      shell: bash
+      run: |
+        touch ./output.json
+        echo "pwd=$(pwd)" >> $GITHUB_OUTPUT
+
     - name: Pull Contensis CLI docker image and run commands
+      id: cli-command
       uses: addnab/docker-run-action@v3
       with:
-        image: ghcr.io/contensis/node-cli/main/app:release
+        image: ghcr.io/contensis/node-cli/main/app:${{ inputs.cli-version }}
+        options: -v ${{ steps.pwd.outputs.pwd }}/output.json:/usr/src/app/output.json
         run: |
-          contensis
+          ${{ inputs.cli-splash }} && contensis
           contensis connect ${{ inputs.alias }} -id ${{ inputs.client-id }} -s ${{ inputs.shared-secret }} -p ${{ inputs.project-id }}
-          contensis ${{ inputs.command || '--help' }}
+          contensis get version
+          contensis ${{ inputs.command || '--help' }} --output output.json
+
+    - name: Set output variables
+      id: set
+      shell: bash
+      run: |
+        OUTPUT=`cat output.json`
+        STRINGIFIED=$(echo "$OUTPUT" | jq -sR .)
+        echo "command-output=$STRINGIFIED" >> $GITHUB_OUTPUT

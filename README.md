@@ -20,18 +20,40 @@ The id of the project to connect to. Default: `"website"`
 
 **Required** Shared secret to use with the supplied client id
 
+## `command`
+
+**Required** The cli command to run including all arguments and options
+
+## `cli-version`
+
+Use cli from specified tag. Default: `"release"`'
+
+## `cli-splash`
+
+Set false to hide cli welcome screen. Default: true'
+
 ## Outputs
 
-No outputs are implemented as yet.
+## `command-output`
+
+The output returned from the command, any json data will be returned stringified and must be parsed in order to access json elements
+
+Here is a way to parse stringified command output, access a json element and assign the value to a GitHub environment var, accessible as `${{ env.version }}` in later job steps
+
+```yml
+run: |
+  VERSION_NO=$(echo -e ${{ steps.cli.outputs.command-output }} | jq .version.versionNo)
+  echo "version=$VERSION_NO" >> $GITHUB_ENV
+```
 
 ## Example usage
 
-### Get entries and output to a file
+### Get entries
 
 ```yml
 uses: contensis/cli-action@v1
 with:
-  command: get entries --zenql "sys.contentTypeId = blogPost" --ouput ./data/blogPosts.json
+  command: get entries --zenql "sys.contentTypeId = blogPost"
   alias: example-dev
   project-id: contensis
   client-id: ${{ secrets.CONTENSIS_CLIENT_ID }}
