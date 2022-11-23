@@ -60,7 +60,5 @@ runs:
       shell: bash
       run: |
         RAW=$(echo -e "`cat output.json`" | tr "\n" " " | jq -sR .)
-        echo "\$RAW: $RAW"
         OUTPUT=$(echo -e $RAW)
-        echo "\$OUTPUT: $OUTPUT"
         echo "command-output=$OUTPUT" >> $GITHUB_OUTPUT
