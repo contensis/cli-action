@@ -94,7 +94,8 @@ runs:
 
         # Run the cli image: optional splash, connect, print version, then run the caller's command with the output captured to output.json.
         # Inside the container script, "$@" is exactly the argument list prepared above - it is passed straight to contensis with no further parsing.
-        docker run --rm \
+        # --pull always: cli-version is usually a moving tag (latest/release), and self-hosted runners would otherwise reuse a stale cached image.
+        docker run --rm --pull always \
           "${ENV_ARGS[@]}" \
           -v ${{ steps.pwd.outputs.pwd }}/output.json:/usr/src/app/output.json \
           ghcr.io/contensis/cli/main/app:${{ inputs.cli-version }} \
