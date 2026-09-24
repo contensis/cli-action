@@ -19,7 +19,7 @@ inputs:
     description: "Shared secret to use with the supplied client id"
     required: true
   command:
-    description: "Optional: which cli command to run"
+    description: "Optional: which cli command to run. Values containing spaces or newlines must be wrapped in quotes. The command is tokenised and never executed as shell syntax."
     required: false
   cli-version:
     description: "Optional: pull cli from specified tag. Default: release"
@@ -54,21 +54,57 @@ runs:
         CONTENSIS_COMMAND: ${{ inputs.command || '--help' }}
         CONTENSIS_CLI_SPLASH: ${{ inputs.cli-splash }}
       run: |
-        # Export all CONTENSIS_* ,GITHUB_*, and CI env vars to a file
-        printenv | grep -E '^(CONTENSIS_|GITHUB_|CI=|HOME=)' > /tmp/github_env
+        # The 'command' input is one string. We split it into separate arguments here - respecting "quotes", 
+        # handing them to the contensis cli as real arguments. 
+        # The string is never executed as shell code, so a value can never run extra commands or corrupt the argument list.
 
+        # python3 shlex module does the splitting; applies standard shell quoting rules without executing anything.
+        if ! command -v python3 >/dev/null 2>&1; then
+          echo "::error::python3 is required on the runner to parse the 'command' input but was not found."
+          exit 1
+        fi
+
+        # Split the command into arguments, writing them to a temp file separated by NUL bytes 
+        # - NUL cannot occur inside an argument, so values containing spaces or newlines survive intact.
+        # - On failure python prints the exact parse error (e.g. "No closing quotation") into the step log.
+        ARGS_FILE="$(mktemp)"
+        trap 'rm -f "$ARGS_FILE"' EXIT
+
+        if ! printf '%s' "$CONTENSIS_COMMAND" \
+          | python3 -c 'import shlex,sys; sys.stdout.write("\0".join(shlex.split(sys.stdin.read())))' \
+          > "$ARGS_FILE"; then
+          # Unbalanced quote or bad escape: stop here rather than run a broken or shifted command.
+          echo "::error::The 'command' input is not valid shell-quoted text - see the parse error above. Check for unbalanced or unescaped quotes in the command (for example inside a commit message)."
+          exit 1
+        fi
+
+        # Read the split arguments back into a bash array; there must be at least one (the command name).
+        mapfile -d '' -t CMD_ARGS < "$ARGS_FILE"
+        if [ "${#CMD_ARGS[@]}" -eq 0 ]; then
+          echo "::error::The 'command' input is empty."
+          exit 1
+        fi
+
+        # Environment for the container: pass each CONTENSIS_*/GITHUB_*/CI/HOME variable by NAME (-e NAME) 
+        # so docker copies its current value exactly, newlines and all.
+        ENV_ARGS=()
+        while IFS= read -r line; do
+          ENV_ARGS+=("-e" "${line%%=*}")
+        done < <(printenv | grep -E '^(CONTENSIS_|GITHUB_|CI=|HOME=)')
+
+        # Run the cli image: optional splash, connect, print version, then run the caller's command with the output captured to output.json.
+        # Inside the container script, "$@" is exactly the argument list prepared above - it is passed straight to contensis with no further parsing.
+        # TODO: replace :latest with :${{ inputs.cli-version }}!!
         docker run --rm \
-          --env-file /tmp/github_env \
+          "${ENV_ARGS[@]}" \
           -v ${{ steps.pwd.outputs.pwd }}/output.json:/usr/src/app/output.json \
-          ghcr.io/contensis/cli/main/app:${{ inputs.cli-version }} \
+          ghcr.io/contensis/cli/main/app:latest \
           sh -c '
             [ "$CONTENSIS_CLI_SPLASH" = "true" ] && contensis;
             contensis connect "$CONTENSIS_ALIAS" -id "$CONTENSIS_CLIENT_ID" -s "$CONTENSIS_SHARED_SECRET" -p "$CONTENSIS_PROJECT_ID";
             contensis get version;
-            # Execute the user-provided CLI command with eval to allow for complex commands and shell expansions
-            # Output is written to output.json for capture by subsequent steps
-            eval contensis $CONTENSIS_COMMAND --output output.json
-          '
+            contensis "$@" --output output.json
+          ' _ "${CMD_ARGS[@]}"
 
     - name: Set output variables
       id: set
