@@ -94,11 +94,10 @@ runs:
 
         # Run the cli image: optional splash, connect, print version, then run the caller's command with the output captured to output.json.
         # Inside the container script, "$@" is exactly the argument list prepared above - it is passed straight to contensis with no further parsing.
-        # TODO: replace :latest with :${{ inputs.cli-version }}!!
         docker run --rm \
           "${ENV_ARGS[@]}" \
           -v ${{ steps.pwd.outputs.pwd }}/output.json:/usr/src/app/output.json \
-          ghcr.io/contensis/cli/main/app:latest \
+          ghcr.io/contensis/cli/main/app:${{ inputs.cli-version }} \
           sh -c '
             [ "$CONTENSIS_CLI_SPLASH" = "true" ] && contensis;
             contensis connect "$CONTENSIS_ALIAS" -id "$CONTENSIS_CLIENT_ID" -s "$CONTENSIS_SHARED_SECRET" -p "$CONTENSIS_PROJECT_ID";
