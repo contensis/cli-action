@@ -22,7 +22,7 @@ The id of the project to connect to. Default: `"website"`
 
 ## `command`
 
-**Required** The cli command to run including all arguments and options
+**Required** The cli command to run including all arguments and options. Values containing spaces or newlines must be wrapped in quotes. Shell expansions are not interpreted. Can be left empty to test connection details.
 
 ## `cli-version`
 

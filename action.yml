@@ -20,7 +20,7 @@ inputs:
     required: true
   command:
     description: "Optional: which cli command to run. Values containing spaces or newlines must be wrapped in quotes. The command is tokenised and never executed as shell syntax."
-    required: false
+    required: false # this is inverse to the documentation as it allows the action to be used to test a connection
   cli-version:
     description: "Optional: pull cli from specified tag. Default: release"
     default: release
